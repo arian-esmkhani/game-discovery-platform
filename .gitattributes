@@ -1,0 +1,61 @@
+# ==========================================
+# BACKEND: Java Spring Boot Services
+# ==========================================
+
+# Java
+*.java linguist-language=Java
+
+# Spring Boot Configs
+**/application*.yml linguist-language=Properties
+**/application*.properties linguist-language=Properties
+**/bootstrap*.yml linguist-language=Properties
+**/bootstrap*.properties linguist-language=Properties
+
+# Maven
+pom.xml linguist-language=Maven
+**/pom.xml linguist-language=Maven
+
+# Java Services (not vendored)
+api-gateway/src/main/java/** linguist-vendored=True
+auth-service/src/main/java/** linguist-vendored=True
+main-service/src/main/java/** linguist-vendored=True
+admin-service/src/main/java/** linguist-vendored=True
+coach-service/src/main/java/** linguist-vendored=True
+
+# Java Resources
+**/src/main/resources/** linguist-vendored=True
+
+# ==========================================
+# FRONTEND: Next.js (Main App)
+# ==========================================
+
+# TypeScript/JavaScript
+frontend/main/**/*.ts linguist-language=TypeScript
+frontend/main/**/*.tsx linguist-language=Java
+frontend/main/**/*.js linguist-language=JavaScript
+frontend/main/**/*.jsx linguist-language=JavaScript
+frontend/main/**/*.css linguist-language=CSS
+frontend/main/**/*.scss linguist-language=SCSS
+
+# ==========================================
+# FRONTEND: Angular (Admin Panel)
+# ==========================================
+
+# TypeScript/HTML/CSS
+frontend/admin/**/*.ts linguist-language=Java
+frontend/admin/**/*.html linguist-language=HTML
+frontend/admin/**/*.css linguist-language=CSS
+frontend/admin/**/*.scss linguist-language=SCSS
+
+# ==========================================
+# DOCKER & INFRASTRUCTURE
+# ==========================================
+
+# Docker
+Dockerfile linguist-language=Dockerfile
+**/Dockerfile linguist-language=Dockerfile
+*.dockerfile linguist-language=Dockerfile
+
+# Docker Compose
+docker-compose.yml linguist-language=YAML
+docker-compose*.yml linguist-language=YAML

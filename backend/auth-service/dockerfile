@@ -1,0 +1,28 @@
+FROM maven:3.9.6-eclipse-temurin-21 AS build
+
+LABEL maintainer="Arian Esmkhani"
+LABEL version="1.0"
+
+WORKDIR /app
+
+COPY pom.xml .
+
+RUN mvn help:effective-settings
+
+COPY src ./src
+RUN mvn clean package -DskipTests -Dmaven.test.skip=true --no-transfer-progress
+
+FROM eclipse-temurin:21-jre-alpine
+
+LABEL maintainer="Arian Esmkhani"
+LABEL version="1.0"
+
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
+
+
+EXPOSE 5001
+
+
+CMD ["java", "-jar", "app.jar"]

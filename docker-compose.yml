@@ -1,0 +1,311 @@
+networks:
+  gateway_net:
+    driver: bridge
+  
+  Service_net:
+    driver: bridge
+    internal: true
+  
+  data_net:
+    driver: bridge
+    internal: true 
+
+services:
+# ==========================================
+# ========== DATABASES =====================
+# ==========================================
+
+  # ========== MySQL ==========
+  mysql:
+    image: mysql:8.0
+    container_name: gym_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DB:my_db}
+      MYSQL_USER: ${MYSQL_USER:my_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:my_pass}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - data_net
+    expose:
+      - "3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root123}"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # ========== Redis ==========
+  redis:
+    image: redis:7-alpine
+    container_name: gym_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis123} --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - data_net
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # ========== MongoDB ==========
+  mongodb:
+    image: mongo:7
+    container_name: gym_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-admin123}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-mongo_db}
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - data_net
+    expose:
+      - "27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+# ==========================================
+# ========== BACKEND SERVICES ==============
+# ==========================================
+
+  # ========== Auth Service (Spring Boot) ==========
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: Dockerfile
+    image: gym/auth-service:1.0.0
+    container_name: gym_auth_service
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-gym_db}
+      DB_USER: ${DB_USER:-gym_user}
+      DB_PASS: ${DB_PASSWORD:-gym_pass}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
+      REMEMBER_ME_EXPIRATION: ${REMEMBER_ME_EXPIRATION:-2592000000}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    networks:
+      - service_net
+      - data_net
+    expose:
+      - "5001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ========== Main Service (Spring Boot) ==========
+  main-service:
+    build:
+      context: ./backend/main-service
+      dockerfile: Dockerfile
+    image: gym/main-service:1.0.0
+    container_name: gym_main_service
+    restart: unless-stopped
+    environment:
+      # MySQL
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-gym_db}
+      DB_USER: ${DB_USER:-gym_user}
+      DB_PASS: ${DB_PASSWORD:-gym_pass}
+      # MongoDB
+      MONGO_HOST: mongodb
+      MONGO_PORT: 27017
+      MONGO_DB: ${MONGO_DB:-gym_db}
+      MONGO_USER: ${MONGO_USER:-admin}
+      MONGO_PASSWORD: ${MONGO_PASSWORD:-admin123}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    networks:
+      - service_net
+      - data_net
+    expose:
+      - "5002"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ========== Admin Service (Spring Boot) ==========
+  admin-service:
+    build:
+      context: ./backend/admin-service
+      dockerfile: Dockerfile
+    image: gym/admin-service:1.0.0
+    container_name: gym_admin_service
+    restart: unless-stopped
+    environment:
+      # MySQL
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-gym_db}
+      DB_USER: ${DB_USER:-gym_user}
+      DB_PASS: ${DB_PASSWORD:-gym_pass}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    networks:
+      - service_net
+      - data_net
+    expose:
+      - "5003"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ========== Coach Service (Spring Boot) ==========
+  coach-service:
+    build:
+      context: ./backend/coach-service
+      dockerfile: Dockerfile
+    image: gym/coach-service:1.0.0
+    container_name: gym_coach_service
+    restart: unless-stopped
+    environment:
+      # MySQL
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-gym_db}
+      DB_USER: ${DB_USER:-gym_user}
+      DB_PASS: ${DB_PASSWORD:-gym_pass}
+      # MongoDB
+      MONGO_HOST: mongodb
+      MONGO_PORT: 27017
+      MONGO_DB: ${MONGO_DB:-gym_db}
+      MONGO_USER: ${MONGO_USER:-admin}
+      MONGO_PASSWORD: ${MONGO_PASSWORD:-admin123}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    networks:
+      - service_net
+      - data_net
+    expose:
+      - "5004"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ========== API Gateway (Spring Boot WebFlux) ==========
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    image: gym/api-gateway:1.0.0
+    container_name: gym_api_gateway
+    restart: unless-stopped
+    environment:
+      # Service Discovery
+      AUTH_SERVICE_URL: "http://auth-service:5001"
+      MAIN_SERVICE_URL: "http://main-service:5002"
+      ADMIN_SERVICE_URL: "http://admin-service:5003"
+      COACH_SERVICE_URL: "http://coach-service:5004"
+      # Redis
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key}
+      # Rate Limiting
+      RATE_LIMIT_IP: ${RATE_LIMIT_IP:-100}
+      RATE_LIMIT_USER: ${RATE_LIMIT_USER:-1000}
+    networks:
+      - gateway_net
+      - service_net
+      - data_net
+    ports:
+      - "5000:5000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      main-service:
+        condition: service_started
+      admin-service:
+        condition: service_started
+      coach-service:
+        condition: service_started
+
+# ==========================================
+# ========== FRONTEND SERVICES =============
+# ==========================================
+
+  # ========== Main Frontend (Next.js) ==========
+  main-frontend:
+    build:
+      context: ./frontend/main
+      dockerfile: Dockerfile
+    image: gym/main-frontend:1.0.0
+    container_name: gym_main_frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: "http://api-gateway:5000"
+      NEXT_PUBLIC_WS_URL: "ws://api-gateway:5000"
+    networks:
+      - gateway_net
+    ports:
+      - "3000:3000"
+    depends_on:
+      api-gateway:
+        condition: service_started
+
+  # ========== Admin Frontend (Angular) ==========
+  admin-frontend:
+    build:
+      context: ./frontend/admin
+      dockerfile: Dockerfile
+    image: gym/admin-frontend:1.0.0
+    container_name: gym_admin_frontend
+    restart: unless-stopped
+    environment:
+      API_URL: "http://api-gateway:5000/api/admin"
+    networks:
+      - gateway_net
+    ports:
+      - "5009:5009"
+    depends_on:
+      api-gateway:
+        condition: service_started
+
+volumes:
+  mysql_data:
+  redis_data:
+  mongo_data:

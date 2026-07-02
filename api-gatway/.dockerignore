@@ -1,0 +1,13 @@
+.env
+.git
+*.log
+target/
+*.md
+HELP.md
+README.md
+.idea/
+*.iml
+.mvn/
+mvnw
+mvnw.cmd
+.DS_Store
