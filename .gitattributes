@@ -19,8 +19,7 @@ pom.xml linguist-language=Maven
 api-gateway/src/main/java/** linguist-vendored=True
 auth-service/src/main/java/** linguist-vendored=True
 main-service/src/main/java/** linguist-vendored=True
-admin-service/src/main/java/** linguist-vendored=True
-coach-service/src/main/java/** linguist-vendored=True
+admin-service/src/main/java/** linguist-vendored=false
 
 # Java Resources
 **/src/main/resources/** linguist-vendored=True
@@ -31,7 +30,7 @@ coach-service/src/main/java/** linguist-vendored=True
 
 # TypeScript/JavaScript
 frontend/main/**/*.ts linguist-language=TypeScript
-frontend/main/**/*.tsx linguist-language=Java
+frontend/main/**/*.tsx linguist-language=TypeScript
 frontend/main/**/*.js linguist-language=JavaScript
 frontend/main/**/*.jsx linguist-language=JavaScript
 frontend/main/**/*.css linguist-language=CSS
